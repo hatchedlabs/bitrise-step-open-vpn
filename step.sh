@@ -25,6 +25,7 @@ for line in $fqdns; do
     ROUTES+=$'\n'
 done
 
+mkdir -p /etc/openvpn
 cat <<EOF > /etc/openvpn/client.conf
 client
 dev tun

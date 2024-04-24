@@ -48,7 +48,6 @@ ca /etc/openvpn/ca.crt
 cert /etc/openvpn/client.crt
 key /etc/openvpn/client.key
 route-nopull
-"$ROUTES"
 EOF
 
     # Add in vpn routes into client.conf

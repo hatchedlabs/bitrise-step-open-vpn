@@ -95,6 +95,9 @@ route-nopull
 EOF
 
     # Add in vpn routes into client.conf
+    echo $ROUTES
+    echo ""
+    echo "$ROUTES"
     echo "$ROUTES" >> client.conf
     cat client.conf
 

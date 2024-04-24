@@ -25,8 +25,11 @@ for line in $fqdns; do
     ROUTES+=$'\n'
 done
 
-mkdir -p /etc/openvpn
-cat <<EOF > /etc/openvpn/client.conf
+case "$OSTYPE" in
+  linux*)
+    echo "Configuring for Ubuntu"
+
+    cat <<EOF > /etc/openvpn/client.conf
 client
 dev tun
 proto ${proto}
@@ -43,13 +46,9 @@ key /etc/openvpn/client.key
 route-nopull
 EOF
 
-# Add in vpn routes into client.conf
-echo "$ROUTES" >> /etc/openvpn/client.conf
-cat /etc/openvpn/client.conf
-
-case "$OSTYPE" in
-  linux*)
-    echo "Configuring for Ubuntu"
+    # Add in vpn routes into client.conf
+    echo "$ROUTES" >> /etc/openvpn/client.conf
+    cat /etc/openvpn/client.conf
 
     echo ${ca_crt} | base64 -d > /etc/openvpn/ca.crt
     echo ${client_crt} | base64 -d > /etc/openvpn/client.crt
@@ -73,10 +72,31 @@ case "$OSTYPE" in
   darwin*)
     echo "Configuring for Mac OS"
 
-    echo ${ca_crt} | base64 -D -o /etc/openvpn/ca.crt
-    echo ${client_crt} | base64 -D -o /etc/openvpn/client.crt
-    echo ${client_key} | base64 -D -o /etc/openvpn/client.key
+    echo ${ca_crt} | base64 -D -o ca.crt
+    echo ${client_crt} | base64 -D -o client.crt
+    echo ${client_key} | base64 -D -o client.key
     echo ""
+
+    cat <<EOF > client.conf
+client
+dev tun
+proto ${proto}
+remote ${host} ${port}
+resolv-retry infinite
+nobind
+persist-key
+persist-tun
+comp-lzo
+verb 3
+ca ca.crt
+cert client.crt
+key client.key
+route-nopull
+EOF
+
+    # Add in vpn routes into client.conf
+    echo "$ROUTES" >> client.conf
+    cat client.conf
 
     echo "Run openvpn"
       # sudo openvpn --client --dev tun --proto ${proto} --remote ${host} ${port} --resolv-retry infinite --nobind --persist-key --persist-tun --comp-lzo --verb 3 --ca ca.crt --cert client.crt --key client.key > $log_path 2>&1 &

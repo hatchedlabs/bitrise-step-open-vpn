@@ -25,15 +25,7 @@ for line in $fqdns; do
     ROUTES+=$'\n'
 done
 
-case "$OSTYPE" in
-  linux*)
-    echo "Configuring for Ubuntu"
-
-    echo ${ca_crt} | base64 -d > /etc/openvpn/ca.crt
-    echo ${client_crt} | base64 -d > /etc/openvpn/client.crt
-    echo ${client_key} | base64 -d > /etc/openvpn/client.key
-
-    cat <<EOF > /etc/openvpn/client.conf
+cat <<EOF > /etc/openvpn/client.conf
 client
 dev tun
 proto ${proto}
@@ -50,9 +42,17 @@ key /etc/openvpn/client.key
 route-nopull
 EOF
 
-    # Add in vpn routes into client.conf
-    echo "$ROUTES" >> /etc/openvpn/client.conf
-    cat /etc/openvpn/client.conf
+# Add in vpn routes into client.conf
+echo "$ROUTES" >> /etc/openvpn/client.conf
+cat /etc/openvpn/client.conf
+
+case "$OSTYPE" in
+  linux*)
+    echo "Configuring for Ubuntu"
+
+    echo ${ca_crt} | base64 -d > /etc/openvpn/ca.crt
+    echo ${client_crt} | base64 -d > /etc/openvpn/client.crt
+    echo ${client_key} | base64 -d > /etc/openvpn/client.key
 
     echo ""
     echo "Run openvpn"
@@ -72,13 +72,15 @@ EOF
   darwin*)
     echo "Configuring for Mac OS"
 
-    echo ${ca_crt} | base64 -D -o ca.crt
-    echo ${client_crt} | base64 -D -o client.crt
-    echo ${client_key} | base64 -D -o client.key
+    echo ${ca_crt} | base64 -D -o /etc/openvpn/ca.crt
+    echo ${client_crt} | base64 -D -o /etc/openvpn/client.crt
+    echo ${client_key} | base64 -D -o /etc/openvpn/client.key
     echo ""
 
     echo "Run openvpn"
-      sudo openvpn --client --dev tun --proto ${proto} --remote ${host} ${port} --resolv-retry infinite --nobind --persist-key --persist-tun --comp-lzo --verb 3 --ca ca.crt --cert client.crt --key client.key > $log_path 2>&1 &    echo "Done"
+      # sudo openvpn --client --dev tun --proto ${proto} --remote ${host} ${port} --resolv-retry infinite --nobind --persist-key --persist-tun --comp-lzo --verb 3 --ca ca.crt --cert client.crt --key client.key > $log_path 2>&1 &
+      sudo openvpn --config client.ovpn > $log_path 2>&1 &
+      echo "Done"
     echo ""
 
     echo "Check status"

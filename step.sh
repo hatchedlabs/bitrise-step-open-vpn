@@ -20,11 +20,10 @@ echo ""
 
 # Converting FQDNs to Routes via dig
 ROUTES=""
-fqdns+=$'\n'
-while IFS= read -r line; do
+for line in $fqdns; do
     ROUTES+="$(dig +short $line | xargs -I % echo -e "route % 255.255.255.255 # ${line}")"
     ROUTES+=$'\n'
-done < <(printf '%s' "$fqdns")
+done
 
 case "$OSTYPE" in
   linux*)

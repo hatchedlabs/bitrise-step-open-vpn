@@ -18,13 +18,6 @@ envman add --key "OPENVPN_LOG_PATH" --value "$log_path"
 echo "Log path exported (\$OPENVPN_LOG_PATH=$log_path)"
 echo ""
 
-# Converting FQDNs to Routes via dig
-ROUTES=""
-for line in $fqdns; do
-    ROUTES+="$(dig +short $line | xargs -I % echo -e "route % 255.255.255.255 # ${line}")"
-    ROUTES+=$'\n'
-done
-
 case "$OSTYPE" in
   linux*)
     echo "Configuring for Ubuntu"
@@ -45,6 +38,13 @@ cert /etc/openvpn/client.crt
 key /etc/openvpn/client.key
 route-nopull
 EOF
+
+    # Converting FQDNs to Routes via dig
+    ROUTES=""
+    for line in $fqdns; do
+        ROUTES+="$(dig +short $line | xargs -I % echo -e "route % 255.255.255.255 # ${line}")"
+        ROUTES+=$'\n'
+    done
 
     # Add in vpn routes into client.conf
     echo "$ROUTES" >> /etc/openvpn/client.conf
@@ -101,15 +101,12 @@ route-nopull
 EOF
 
     # Add in vpn routes into client.conf
-    echo $ROUTES
-    echo ""
-    echo "$ROUTES"
     echo "$ROUTES" >> client.conf
     cat client.conf
 
     echo "Run openvpn"
       # sudo openvpn --client --dev tun --proto ${proto} --remote ${host} ${port} --resolv-retry infinite --nobind --persist-key --persist-tun --comp-lzo --verb 3 --ca ca.crt --cert client.crt --key client.key > $log_path 2>&1 &
-      sudo openvpn --config client.ovpn > $log_path 2>&1 &
+      sudo openvpn --config client.conf > $log_path 2>&1 &
       echo "Done"
     echo ""
 

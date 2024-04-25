@@ -77,6 +77,12 @@ EOF
     echo ${client_key} | base64 -D -o client.key
     echo ""
 
+    ROUTES=""
+    for line in $fqdns; do
+        ROUTES+="$(dig +short $line | xargs -I % echo "route % 255.255.255.255 # ${line}")"
+        ROUTES+=$'\n'
+    done
+
     cat <<EOF > client.conf
 client
 dev tun

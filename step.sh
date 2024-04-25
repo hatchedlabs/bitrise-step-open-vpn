@@ -1,14 +1,16 @@
 #!/bin/bash
 set -eu
 
-echo "Configs:"
-echo "host: $host"
-echo "port: $port"
-echo "proto: $proto"
-echo "ca_crt: $(if [ ! -z "$ca_crt" ]; then echo "***"; fi)"
-echo "client_crt: $(if [ ! -z "$client_crt" ]; then echo "***"; fi)"
-echo "client_key: $(if [ ! -z "$client_key" ]; then echo "***"; fi)"
-echo ""
+cat <<EOF
+CONFIGS:
+  host: $host
+  port: $port
+  proto: $proto
+  ca_crt: $(if [ ! -z "$ca_crt" ]; then echo "***"; fi)
+  client_crt: $(if [ ! -z "$client_crt" ]; then echo "***"; fi)
+  client_key: $(if [ ! -z "$client_key" ]; then echo "***"; fi)
+  fqdns: $fqdns
+EOF
 
 log_path=$(mktemp)
 
@@ -19,10 +21,6 @@ echo ""
 case "$OSTYPE" in
   linux*)
     echo "Configuring for Ubuntu"
-
-    echo ${ca_crt} | base64 -d > /etc/openvpn/ca.crt
-    echo ${client_crt} | base64 -d > /etc/openvpn/client.crt
-    echo ${client_key} | base64 -d > /etc/openvpn/client.key
 
     cat <<EOF > /etc/openvpn/client.conf
 client
@@ -35,10 +33,26 @@ persist-key
 persist-tun
 comp-lzo
 verb 3
-ca ca.crt
-cert client.crt
-key client.key
+ca /etc/openvpn/ca.crt
+cert /etc/openvpn/client.crt
+key /etc/openvpn/client.key
+route-nopull
 EOF
+
+    # Converting FQDNs to Routes via dig
+    ROUTES=""
+    for line in $fqdns; do
+        ROUTES+="$(dig +short $line | xargs -I % echo -e "route % 255.255.255.255 # ${line}")"
+        ROUTES+=$'\n'
+    done
+
+    # Add in vpn routes into client.conf
+    echo "$ROUTES" >> /etc/openvpn/client.conf
+    cat /etc/openvpn/client.conf
+
+    echo ${ca_crt} | base64 -d > /etc/openvpn/ca.crt
+    echo ${client_crt} | base64 -d > /etc/openvpn/client.crt
+    echo ${client_key} | base64 -d > /etc/openvpn/client.key
 
     echo ""
     echo "Run openvpn"
@@ -56,15 +70,41 @@ EOF
     echo "Done"
     ;;
   darwin*)
-    echo "Configuring for Mac OS"
+    echo "Configuring for MacOS"
 
     echo ${ca_crt} | base64 -D -o ca.crt
     echo ${client_crt} | base64 -D -o client.crt
     echo ${client_key} | base64 -D -o client.key
     echo ""
 
+    cat <<EOF > client.conf
+client
+dev tun
+proto ${proto}
+remote ${host} ${port}
+resolv-retry infinite
+nobind
+persist-key
+persist-tun
+comp-lzo
+verb 3
+ca ca.crt
+cert client.crt
+key client.key
+route-nopull
+EOF
+
+    # Add in vpn routes into client.conf
+    ROUTES=""
+    for line in $fqdns; do
+        ROUTES+="$(dig +short $line | xargs -I % echo "route % 255.255.255.255 # ${line}")"
+        ROUTES+=$'\n'
+    done
+    echo "$ROUTES" >> client.conf
+    cat client.conf
+
     echo "Run openvpn"
-      sudo openvpn --client --dev tun --proto ${proto} --remote ${host} ${port} --resolv-retry infinite --nobind --persist-key --persist-tun --comp-lzo --verb 3 --ca ca.crt --cert client.crt --key client.key > $log_path 2>&1 &
+      sudo openvpn --config client.conf > $log_path 2>&1 &
     echo "Done"
     echo ""
 

@@ -104,9 +104,9 @@ inputs:
   - fqdns:
     opts:
       title: "FQDNs to route tp VPN"
-      summary: "FQDNs to route tp VPN. Comma Separated"
+      summary: "FQDNs to route tp VPN. New Line Separated"
       description: |
-        FQDNs to route tp VPN. Comma Separated
+        FQDNs to route tp VPN. New Line Separated
       is_expand: true
       is_required: false
 outputs:

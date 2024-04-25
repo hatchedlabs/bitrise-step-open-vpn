@@ -77,12 +77,6 @@ EOF
     echo ${client_key} | base64 -D -o client.key
     echo ""
 
-    ROUTES=""
-    for line in $fqdns; do
-        ROUTES+="$(dig +short $line | xargs -I % echo "route % 255.255.255.255 # ${line}")"
-        ROUTES+=$'\n'
-    done
-
     cat <<EOF > client.conf
 client
 dev tun
@@ -101,13 +95,17 @@ route-nopull
 EOF
 
     # Add in vpn routes into client.conf
+    ROUTES=""
+    for line in $fqdns; do
+        ROUTES+="$(dig +short $line | xargs -I % echo "route % 255.255.255.255 # ${line}")"
+        ROUTES+=$'\n'
+    done
     echo "$ROUTES" >> client.conf
     cat client.conf
 
     echo "Run openvpn"
-      # sudo openvpn --client --dev tun --proto ${proto} --remote ${host} ${port} --resolv-retry infinite --nobind --persist-key --persist-tun --comp-lzo --verb 3 --ca ca.crt --cert client.crt --key client.key > $log_path 2>&1 &
       sudo openvpn --config client.conf > $log_path 2>&1 &
-      echo "Done"
+    echo "Done"
     echo ""
 
     echo "Check status"
